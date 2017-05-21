@@ -12,8 +12,8 @@ headerPanel( HTML("<h1><b>Upload Text File</b></h1>") ),
 
 ## Side bar                         
     sidebarPanel(
-        selectInput('xval', '# of times to duplicate', c(1,2,3,4), selected=c(1), selectize = FALSE),
-        fileInput('bedfile', 'Upload File', accept=c('text/csv', 'text/comma-separated-values,text/plain', '.txt')),
+        selectInput('xval', 'Randint', c(1,2,3,4), selected=c(1), selectize = FALSE),
+        fileInput('uploadedfile', 'Upload File', accept=c('text/csv', 'text/comma-separated-values,text/plain', '.txt', '.tsv')),
         verbatimTextOutput("uploadedFileText")
     ),
 
@@ -25,7 +25,7 @@ headerPanel( HTML("<h1><b>Upload Text File</b></h1>") ),
         dataTableOutput('table'),
         conditionalPanel('output.readyToAnalyze == "TRUE"', 
             verbatimTextOutput("outputExist"),
-            actionButton("runPy", "Run gRNA Scoring"), tags$br(), tags$br(),
+            actionButton("runPy", "Run Python Script"), tags$br(), tags$br(),
             conditionalPanel('output.outputExist == "Done"', downloadButton("downloadData", "Download File"))
         )
      )

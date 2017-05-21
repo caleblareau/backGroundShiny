@@ -10,8 +10,7 @@ function(input, output, session) {
         computing = FALSE
     )
     
-    # Upload a file; handle i/o and render it
-    # If it's bigger than 10 peaks, don't proceed
+    # Upload a file; handle i/o and render it; possibly fail based on condition
     output$uploadedFileText <- renderText({
         if (is.null(input$uploadedfile)) return(NULL)
         nameObject <- fixUploadedFilesNames(input$uploadedfile)
@@ -26,7 +25,6 @@ function(input, output, session) {
     })
     
     # Render text as to why the analysis can't be run
-    # Either because peak file is big or no input
     output$porqueNo <- renderText({
         if(is.null(input$uploadedfile)){
             "Upload file!"
@@ -39,11 +37,10 @@ function(input, output, session) {
     # Toy example; check for "yay.txt"
     observeEvent(input$runPy,{
        rv$computing = TRUE
-       system(paste0("python somethingRan.py ", rv$goFile))
+       system(paste0("python runSomething.py ", rv$filename, " ", input$xval))
     })
     
     checkFn <- reactiveFileReader(500, session, "yay.txt", file.exists)
-    
     
     output$outputExist <- renderText({
         if(checkFn()){
@@ -58,10 +55,10 @@ function(input, output, session) {
     # Download output file
     output$downloadData <- downloadHandler(
         filename <- function(){
-            "peakchopper.out.png"
+            "yay.txt"
         },
         content <- function(file){
-            file.copy("gRNA_Score_Distribution.png", file)
+            file.copy("yay.txt", file)
         }
     )
 
