@@ -1,72 +1,48 @@
 source("extRa/startup.R")
-source("extRa/processTopology.R")
 
 function(input, output, session) {
     
     session$onSessionEnded(stopApp)
-    
-    # Set up dataframe for data description tab
-    dDF <- read.table("https://raw.githubusercontent.com/aryeelab/dnalandscaper_tracks/master/peakchopper_tracks.txt", header = FALSE, sep = ",")
-    colnames(dDF) <- c("Track",	"Organism",	"Type", "PMID",	"Description")
-    dDF$PMID <- paste0('<a href="http://www.ncbi.nlm.nih.gov/pubmed/', dDF$PMID, '" target="_blank">', dDF$PMID, '</a>')
-    output$preloadedDataDescription <- renderDataTable({dDF}, escape = FALSE)
-    
+
     rv <- reactiveValues(
-        bedfile = FALSE,
-        peaks = NULL,
-        smallFile = FALSE,
-        computing = FALSE,
-        
-        # Topology Reactive Variables
-        humanGenes = g.geneList,
-        deData = g.deLoopData,
-        ilData = g.ilLoopData
+        goFile = FALSE,
+        filename = NULL,
+        computing = FALSE
     )
     
-    # Upload a bed file; handle i/o and render it
+    # Upload a file; handle i/o and render it
     # If it's bigger than 10 peaks, don't proceed
     output$uploadedFileText <- renderText({
-        if (is.null(input$bedfile)) return(NULL)
-        nameObject <- fixUploadedFilesNames(input$bedfile)
-        rv$bedfile <- nameObject$datapath
-        rv$peaks <- read.table(rv$bedfile , header = FALSE)
-        rv$smallFile = (dim(rv$peaks)[1] < 10)
-        paste0("Uploaded .bed file: ", nameObject$name)
+        if (is.null(input$uploadedfile)) return(NULL)
+        nameObject <- fixUploadedFilesNames(input$uploadedfile)
+        rv$filename <- nameObject$datapath
+        rv$goFile <- TRUE # can apply other conditions to uploaded file
+        paste0("Uploaded file: ", nameObject$name)
     })
     
     # Render boolean variable to determine if we can execute python script
     output$readyToAnalyze <- renderText({
-       as.character(rv$smallFile & !is.null(input$bedfile))
+       as.character(rv$goFile & !is.null(input$uploadedfile))
     })
     
     # Render text as to why the analysis can't be run
     # Either because peak file is big or no input
     output$porqueNo <- renderText({
-        if(is.null(input$bedfile)){
-            "Specify .bed file!"
+        if(is.null(input$uploadedfile)){
+            "Upload file!"
         } else {
-            ".bed file too big; maximum number of peaks allowed is 10!"  
+            "Something is fishy with the file"
         }
     })
     
-    output$table <- renderDataTable(rv$peaks)
-    
-    # Execute Python Code
-    
+
+    # Toy example; check for "yay.txt"
     observeEvent(input$runPy,{
-        rv$computing = TRUE
-        system(paste0("python peakchop.py -bed ", rv$bedfile, " -genome hg19.2bit"))
+       rv$computing = TRUE
+       system(paste0("python somethingRan.py ", rv$goFile))
     })
     
-    # Check for the file every half second
-    checkFn <- reactiveFileReader(500, session, "gRNA_Score_Distribution.png", file.exists)
-    
-    # Toy example
-    # observeEvent(input$runPy,{
-    #    rv$computing = TRUE
-    #    system(paste0("python somethingRan.py ", rv$bedfile))
-    # })
-    # checkFn <- reactiveFileReader(500, session, "yay.txt", file.exists)
+    checkFn <- reactiveFileReader(500, session, "yay.txt", file.exists)
     
     
     output$outputExist <- renderText({
@@ -79,7 +55,7 @@ function(input, output, session) {
         }})
     
 
-    # Download Data; Replace with like a .zip of the file outputs eventually...
+    # Download output file
     output$downloadData <- downloadHandler(
         filename <- function(){
             "peakchopper.out.png"
@@ -89,51 +65,6 @@ function(input, output, session) {
         }
     )
 
-    
-### Topology Panel
-    observe({
-        updateSelectizeInput(session, "genesSelected", choices = g.geneList, server = TRUE)
-        updateSelectizeInput(session, "enhancerLoopsHuman", choices = rv$deData, server = TRUE)
-        updateSelectizeInput(session, "insulatedLoopsHuman", choices = rv$ilData, server = TRUE)
-    })
-    
-    observe({
-      if(input$featureSet == "sg"){
-          rv$humanGenes <- input$genesSelected
-      } else if(input$featureSet == "upl" & !is.null(input$genesOfInterestUP)){
-          rv$humanGenes <- read.table(input$genesOfInterestUP, header = FALSE)[,1]
-      }
-    })
-    
-    # Download Stuff
-    output$showEnhancerLoopDownload = renderUI({
-        if(length(input$enhancerLoopsHuman) > 0 & length(rv$humanGenes) > 0) {
-            downloadButton("downloadEnhancerRegions", "Download Enhancer Regions")
-        }
-    })
-    
-    output$downloadEnhancerRegions <- downloadHandler(
-        filename = function() { paste0('peakchopper-distalEnhancers', Sys.Date(), '.bed') },
-        content = function(file) {
-            write.table(getDistalEnhancers(input$genesSelected, input$enhancerLoopsHuman),
-                        file, quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
-        }
-    )
-    
-    output$showInsulatedLoopDownload = renderUI({
-        if(length(input$enhancerLoopsHuman) > 0 & length(rv$humanGenes) > 0) {
-            downloadButton("downloadInsulatedRegions", "Download Insulated Loop Regions")
-        }
-    })
-    
-    output$downloadEnhancerRegions <- downloadHandler(
-        filename = function() { paste0('peakchopper-insulatedLoops', Sys.Date(), '.bed') },
-        content = function(file) {
-            write.table(getDistalEnhancers(input$genesSelected, input$enhancerLoopsHuman),
-                        file, quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
-        }
-    )
-    
     
 }
 
